@@ -1,48 +1,27 @@
-import React from 'react';
-import { createInertiaApp } from '@inertiajs/inertia-react';
-import { render } from 'react-dom';
-import { AppProvider as PolarisProvider } from '@shopify/polaris';
-import ShopifyAppBridgeProvider from './Providers/ShopifyAppBridgeProvider';
-import '@shopify/polaris/dist/styles.css';
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
-import ProtectedRoute from './Components/ProtectedRoute';
-import Login from './Pages/Login';
-import Home from './Pages/Home';
-import axios from 'axios';
-import { refreshToken } from './utils/refreshToken';
+import React from "react";
+import { render } from "react-dom";
+import { createInertiaApp, InertiaApp } from "@inertiajs/inertia-react";
+import { AppProvider } from "@shopify/polaris";
+import translations from "@shopify/polaris/locales/en.json";
 
-// Setup Axios Interceptors for token refresh
-axios.interceptors.response.use(
-  response => response,
-  async error => {
-    const originalRequest = error.config;
-    if (error.response.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      const newToken = await refreshToken();
-      if (newToken) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-        return axios(originalRequest);
-      }
-    }
-    return Promise.reject(error);
-  }
-);
+// const el = document.getElementById("app");
+
+// render(
+//   <AppProvider i18n={translations}>
+//     <InertiaApp
+//       initialPage={JSON.parse(el.dataset.page)}
+//       resolveComponent={(name) => require(`./Pages/${name}`).default}
+//     />
+//   </AppProvider>,
+//   el
+// );
 
 createInertiaApp({
-  resolve: name => require(`./Pages/${name}`).default,
+  resolve: (name) => {
+    const pages = import.meta.glob("./Pages/**/*.jsx", { eager: true });
+    return pages[`./Pages/${name}.jsx`];
+  },
   setup({ el, App, props }) {
-    render(
-      <PolarisProvider>
-        <ShopifyAppBridgeProvider>
-          <Router>
-            <Switch>
-              <Route path="/login" component={Login} />
-              <ProtectedRoute path="/home" component={Home} />
-            </Switch>
-          </Router>
-        </ShopifyAppBridgeProvider>
-      </PolarisProvider>,
-      el
-    );
+    createRoot(el).render(<App {...props} />);
   },
 });
